@@ -1,8 +1,28 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leopotam.Ecs", "leoEcs\Leopotam.Ecs.csproj", "{800D4985-47F5-4396-ACD2-116F47FB3AA8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Leopotam.Ecs.Net", "Leopotam.Ecs.Net\Leopotam.Ecs.Net.csproj", "{5615E084-5ACB-43C0-A953-E3866039FD86}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication1", "ConsoleApplication1\ConsoleApplication1.csproj", "{7B57B37E-9CAE-4CD1-BC01-B91F54D5ECED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{800D4985-47F5-4396-ACD2-116F47FB3AA8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{800D4985-47F5-4396-ACD2-116F47FB3AA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{800D4985-47F5-4396-ACD2-116F47FB3AA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{800D4985-47F5-4396-ACD2-116F47FB3AA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5615E084-5ACB-43C0-A953-E3866039FD86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5615E084-5ACB-43C0-A953-E3866039FD86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5615E084-5ACB-43C0-A953-E3866039FD86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5615E084-5ACB-43C0-A953-E3866039FD86}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B57B37E-9CAE-4CD1-BC01-B91F54D5ECED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B57B37E-9CAE-4CD1-BC01-B91F54D5ECED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B57B37E-9CAE-4CD1-BC01-B91F54D5ECED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B57B37E-9CAE-4CD1-BC01-B91F54D5ECED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
