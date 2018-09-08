@@ -9,9 +9,10 @@ namespace Leopotam.Ecs.Net
         private EcsWorld _ecsWorld = null;
         private EcsFilterSingle<EcsNetworkConfig> _config = null;
 
-        private EcsFilter<StartRetranslatorEvent> _startEvents = null;
-        private EcsFilter<StopRetranslatorEvent> _stopEvents = null;
+        private EcsFilter<StartListenerEvent> _startEvents = null;
+        private EcsFilter<StopListenerEvent> _stopEvents = null;
         private EcsFilter<SendNetworkComponentEvent> _sendEvents = null;
+        private EcsFilter<ConnectToEvent> _connectEvents = null;
 
         private EcsFilter<ClientConnectedEvent> _connectedClients = null;
         private EcsFilter<ClientDisconnectedEvent> _disconnectedClients = null;
@@ -24,24 +25,25 @@ namespace Leopotam.Ecs.Net
         
         public void Run()
         {
-            StartStopRetranslator();
+            StartStopListener();
             ReceiveConnects();
             SendComponents();
             ReceiveComponents();
         }
 
-        private void StartStopRetranslator()
+        private void StartStopListener()
         {
             if (_startEvents.EntitiesCount > 0)
             {
-                if (!_config.Data.Retranslator.IsRunning())
+                if (!_config.Data.EcsNetworkListener.IsRunning)
                 {
-                    _config.Data.Retranslator.Start();
+                    _config.Data.EcsNetworkListener.Start(_config.Data);
+                    Console.WriteLine("Listener started");
                 }
 #if DEBUG
                 else
                 {
-                    throw new Exception("Retranslator is already started");
+                    throw new Exception("EcsNetworkListener is already started");
                 }
 #endif
                 
@@ -50,14 +52,15 @@ namespace Leopotam.Ecs.Net
             
             if (_stopEvents.EntitiesCount > 0)
             {
-                if (_config.Data.Retranslator.IsRunning())
+                if (_config.Data.EcsNetworkListener.IsRunning)
                 {
-                    _config.Data.Retranslator.Stop();
+                    _config.Data.EcsNetworkListener.Stop();
+                    Console.WriteLine("Listener stopped");
                 }
 #if DEBUG
                 else
                 {
-                    throw new Exception("Retranslator is already stopped");
+                    throw new Exception("EcsNetworkListener is already stopped");
                 }
 #endif
                 
@@ -67,16 +70,31 @@ namespace Leopotam.Ecs.Net
 
         private void ReceiveConnects()
         {
-            _connectedClients.RemoveAllEntities();
-            foreach (ClientInfo clientInfo in _config.Data.Retranslator.GetConnectedClients())
+            for (int i = 0; i < _connectedClients.EntitiesCount; i++)
+            {
+                _connectedClients.Components1[i].ConnectedClient = null;
+                _ecsWorld.RemoveEntity(_connectedClients.Entities[i]);
+            }
+            foreach (ClientInfo clientInfo in _config.Data.EcsNetworkListener.GetConnectedClients())
             {
                 _ecsWorld.CreateEntityWith<ClientConnectedEvent>().ConnectedClient = clientInfo;
             }
 
-            _disconnectedClients.RemoveAllEntities();
-            foreach (ClientInfo clientInfo in _config.Data.Retranslator.GetDisconnectedClients())
+            for (int i = 0; i < _disconnectedClients.EntitiesCount; i++)
+            {
+                _disconnectedClients.Components1[i].DisconnectedClient = null;
+                _ecsWorld.RemoveEntity(_disconnectedClients.Entities[i]);
+            }
+            foreach (ClientInfo clientInfo in _config.Data.EcsNetworkListener.GetDisconnectedClients())
             {
                 _ecsWorld.CreateEntityWith<ClientDisconnectedEvent>().DisconnectedClient = clientInfo;
+            }
+
+            for (int i = 0; i < _connectEvents.EntitiesCount; i++)
+            {
+                ConnectToEvent connectEvent = _connectEvents.Components1[i];
+                _config.Data.EcsNetworkListener.Connect(connectEvent.Address, connectEvent.Port);
+                _ecsWorld.RemoveEntity(_connectEvents.Entities[i]);
             }
         }
 
@@ -85,21 +103,24 @@ namespace Leopotam.Ecs.Net
             for (int i = 0; i < _sendEvents.EntitiesCount; i++)
             {
                 var sendEvent = _sendEvents.Components1[i];
-                _config.Data.Retranslator.SendComponent(sendEvent);
+                _config.Data.EcsNetworkListener.SendComponent(sendEvent);
                 sendEvent.ComponentBytes = null;
+                Console.WriteLine($"Component {sendEvent.ComponentTypeUid} sended");
             }
             _sendEvents.RemoveAllEntities();
         }
 
         private void ReceiveComponents()
         {
-            foreach (var receivedComponent in _config.Data.Retranslator.GetReceivedComponents())
+            foreach (var receivedComponent in _config.Data.EcsNetworkListener.GetReceivedComponents())
             {
                 _ecsWorld.CreateEntityWith(out ReceivedNetworkComponentEvent receivedNetworkComponentEvent);
                 receivedNetworkComponentEvent.ComponentFlags = receivedComponent.ComponentFlags;
                 receivedNetworkComponentEvent.NetworkEntityUid = receivedComponent.NetworkEntityUid;
                 receivedNetworkComponentEvent.ComponentTypeUid = receivedComponent.ComponentTypeUid;
                 receivedNetworkComponentEvent.ComponentBytes = receivedComponent.ComponentBytes;
+                
+                Console.WriteLine($"Component {receivedComponent.ComponentTypeUid} received");
             }
         }
 
@@ -113,7 +134,7 @@ namespace Leopotam.Ecs.Net
     public abstract class BaseNetworkProcessSystem<T> : IEcsInitSystem, IEcsRunSystem
         where T : class, new()
     {
-        public long ComponentUid { get; protected set; }
+        public short ComponentUid { get; protected set; }
         
         protected EcsWorld EcsWorld = null;
         protected EcsFilterSingle<EcsNetworkConfig> NetworkConfig = null;

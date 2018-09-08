@@ -4,7 +4,7 @@
     {
         public EcsNetComponentFlags ComponentFlags;
         public long NetworkEntityUid;
-        public long ComponentTypeUid;
+        public short ComponentTypeUid;
         public byte[] ComponentBytes;
     }
     
@@ -24,14 +24,20 @@
         public EcsNetComponentFlags ComponentFlags;
     }
     
-    public class StartRetranslatorEvent
+    public class StartListenerEvent
     {
         
     }
     
-    public class StopRetranslatorEvent
+    public class StopListenerEvent
     {
         
+    }
+
+    public class ConnectToEvent
+    {
+        public string Address;
+        public short Port;
     }
     
     public class ClientConnectedEvent

@@ -6,11 +6,14 @@
         T GetComponentFromBytes<T>(byte[] bytes) where T : class, new();
     }
     
-    public interface IRetranslator
+    public interface IEcsNetworkListener
     {
-        void Start();
+        bool IsRunning { get; }
+        
+        void Start(EcsNetworkConfig config);
         void Stop();
-        bool IsRunning();
+
+        void Connect(string address, short port);
         
         ClientInfo[] GetConnectedClients();
         ClientInfo[] GetDisconnectedClients();
