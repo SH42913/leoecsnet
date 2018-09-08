@@ -6,7 +6,7 @@
             where TComponent : class, new()
         {
             ecsWorld.CreateEntityWith(out PrepareComponentToSendEvent<TComponent> prepare);
-            prepare.LocalEntityId = entity;
+            prepare.LocalEntityUid = entity;
             prepare.ComponentFlags = 0;
         }
         
@@ -14,7 +14,7 @@
             where TComponent : class, new()
         {
             ecsWorld.CreateEntityWith(out PrepareComponentToSendEvent<TComponent> prepare);
-            prepare.LocalEntityId = entity;
+            prepare.LocalEntityUid = entity;
             prepare.ComponentFlags = EcsNetComponentFlags.WAS_REMOVED;
         }
         
@@ -23,7 +23,7 @@
         {
             int entity = ecsWorld.CreateEntityWith(out TEvent newEvent);
             ecsWorld.CreateEntityWith(out PrepareComponentToSendEvent<TEvent> prepare);
-            prepare.LocalEntityId = entity;
+            prepare.LocalEntityUid = entity;
             prepare.ComponentFlags = EcsNetComponentFlags.IS_EVENT;
 
             return newEvent;

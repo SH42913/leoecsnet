@@ -1,12 +1,10 @@
-﻿using System;
-
-namespace Leopotam.Ecs.Net
+﻿namespace Leopotam.Ecs.Net
 {
     public abstract class BaseNetworkComponentEvent
     {
         public EcsNetComponentFlags ComponentFlags;
-        public Guid NetworkEntityGuid;
-        public long ComponentNetworkUid;
+        public long NetworkEntityUid;
+        public long ComponentTypeUid;
         public byte[] ComponentBytes;
     }
     
@@ -22,7 +20,7 @@ namespace Leopotam.Ecs.Net
     
     public class PrepareComponentToSendEvent<TComponent> where TComponent : class, new()
     {
-        public int LocalEntityId;
+        public int LocalEntityUid;
         public EcsNetComponentFlags ComponentFlags;
     }
     

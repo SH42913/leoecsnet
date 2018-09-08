@@ -18,8 +18,8 @@ namespace Leopotam.Ecs.Net
 
         public void Initialize()
         {
-            _config.Data.LocalEntitiesToNetworkGuid = new Dictionary<int, Guid>();
-            _config.Data.NetworkEntitiesGuidToLocal = new Dictionary<Guid, int>();
+            _config.Data.LocalEntitiesToNetwork = new Dictionary<int, long>();
+            _config.Data.NetworkEntitiesToLocal = new Dictionary<long, int>();
         }
         
         public void Run()
@@ -97,8 +97,8 @@ namespace Leopotam.Ecs.Net
             {
                 _ecsWorld.CreateEntityWith(out ReceivedNetworkComponentEvent receivedNetworkComponentEvent);
                 receivedNetworkComponentEvent.ComponentFlags = receivedComponent.ComponentFlags;
-                receivedNetworkComponentEvent.NetworkEntityGuid = receivedComponent.NetworkEntityGuid;
-                receivedNetworkComponentEvent.ComponentNetworkUid = receivedComponent.ComponentNetworkUid;
+                receivedNetworkComponentEvent.NetworkEntityUid = receivedComponent.NetworkEntityUid;
+                receivedNetworkComponentEvent.ComponentTypeUid = receivedComponent.ComponentTypeUid;
                 receivedNetworkComponentEvent.ComponentBytes = receivedComponent.ComponentBytes;
             }
         }
@@ -139,7 +139,7 @@ namespace Leopotam.Ecs.Net
             for (int i = 0; i < ReceivedComponents.EntitiesCount; i++)
             {
                 var receivedComponent = ReceivedComponents.Components1[i];
-                if (receivedComponent.ComponentNetworkUid != ComponentUid) continue;
+                if (receivedComponent.ComponentTypeUid != ComponentUid) continue;
                 
                 ProcessReceivedComponent(receivedComponent);
                 receivedComponent.ComponentBytes = null;
@@ -157,16 +157,16 @@ namespace Leopotam.Ecs.Net
 
         protected abstract void PrepareComponentToNetwork(PrepareComponentToSendEvent<T> componentToNetwork);
         
-        protected void AddNetworkToLocalEntity(Guid network, int local)
+        protected void AddNetworkToLocalEntity(long network, int local)
         {
-            NetworkConfig.Data.NetworkEntitiesGuidToLocal.Add(network, local);
-            NetworkConfig.Data.LocalEntitiesToNetworkGuid.Add(local, network);
+            NetworkConfig.Data.NetworkEntitiesToLocal.Add(network, local);
+            NetworkConfig.Data.LocalEntitiesToNetwork.Add(local, network);
         }
 
-        protected void RemoveNetworkToLocalEntity(Guid network, int local)
+        protected void RemoveNetworkToLocalEntity(long network, int local)
         {
-            NetworkConfig.Data.NetworkEntitiesGuidToLocal.Remove(network);
-            NetworkConfig.Data.LocalEntitiesToNetworkGuid.Remove(local);
+            NetworkConfig.Data.NetworkEntitiesToLocal.Remove(network);
+            NetworkConfig.Data.LocalEntitiesToNetwork.Remove(local);
         }
 
         public void Destroy()
@@ -189,8 +189,8 @@ namespace Leopotam.Ecs.Net
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
         {
             TComponent oldComponent;
-            Guid networkEntity = received.NetworkEntityGuid;
-            bool localEntityExist = NetworkConfig.Data.NetworkEntitiesGuidToLocal.ContainsKey(networkEntity);
+            long networkEntity = received.NetworkEntityUid;
+            bool localEntityExist = NetworkConfig.Data.NetworkEntitiesToLocal.ContainsKey(networkEntity);
             int localEntity;
             bool componentWasRemoved = received.ComponentFlags.HasFlag(EcsNetComponentFlags.WAS_REMOVED);
 
@@ -204,13 +204,13 @@ namespace Leopotam.Ecs.Net
             
             if (localEntityExist)
             {
-                localEntity = NetworkConfig.Data.NetworkEntitiesGuidToLocal[received.NetworkEntityGuid];
+                localEntity = NetworkConfig.Data.NetworkEntitiesToLocal[received.NetworkEntityUid];
                 oldComponent = EcsWorld.EnsureComponent<TComponent>(localEntity);
             }
             else
             {
                 localEntity = EcsWorld.CreateEntityWith(out oldComponent);
-                AddNetworkToLocalEntity(received.NetworkEntityGuid, localEntity);
+                AddNetworkToLocalEntity(received.NetworkEntityUid, localEntity);
             }
 
             if (componentWasRemoved)
@@ -229,7 +229,7 @@ namespace Leopotam.Ecs.Net
 
         protected override void PrepareComponentToNetwork(PrepareComponentToSendEvent<TComponent> prepareComponent)
         {
-            TComponent componentToSend = EcsWorld.GetComponent<TComponent>(prepareComponent.LocalEntityId);
+            TComponent componentToSend = EcsWorld.GetComponent<TComponent>(prepareComponent.LocalEntityUid);
             bool componentWasRemoved = prepareComponent.ComponentFlags.HasFlag(EcsNetComponentFlags.WAS_REMOVED);
             
 #if DEBUG
@@ -240,12 +240,12 @@ namespace Leopotam.Ecs.Net
 #endif
             
             EcsWorld.CreateEntityWith(out SendNetworkComponentEvent sendEvent);
-            sendEvent.ComponentNetworkUid = ComponentUid;
+            sendEvent.ComponentTypeUid = ComponentUid;
             sendEvent.ComponentFlags = prepareComponent.ComponentFlags;
 
-            int localEntity = prepareComponent.LocalEntityId;
-            bool localEntityExist = NetworkConfig.Data.LocalEntitiesToNetworkGuid.ContainsKey(localEntity);
-            Guid networkEntity;
+            int localEntity = prepareComponent.LocalEntityUid;
+            bool localEntityExist = NetworkConfig.Data.LocalEntitiesToNetwork.ContainsKey(localEntity);
+            long networkEntity;
 
             if (componentWasRemoved)
             {
@@ -258,8 +258,8 @@ namespace Leopotam.Ecs.Net
                 
                 networkEntity = NetworkConfig
                     .Data
-                    .LocalEntitiesToNetworkGuid[localEntity];
-                sendEvent.NetworkEntityGuid = networkEntity;
+                    .LocalEntitiesToNetwork[localEntity];
+                sendEvent.NetworkEntityUid = networkEntity;
                 
                 if(EcsWorld.IsEntityExists(localEntity)) return;
                 RemoveNetworkToLocalEntity(networkEntity, localEntity);
@@ -272,14 +272,14 @@ namespace Leopotam.Ecs.Net
                 {
                     networkEntity = NetworkConfig
                         .Data
-                        .LocalEntitiesToNetworkGuid[localEntity];
-                    sendEvent.NetworkEntityGuid = networkEntity;
+                        .LocalEntitiesToNetwork[localEntity];
+                    sendEvent.NetworkEntityUid = networkEntity;
                 }
                 else
                 {
-                    networkEntity = Guid.NewGuid();
+                    networkEntity = NetworkConfig.Data.Random.NextInt64();
                     AddNetworkToLocalEntity(networkEntity, localEntity);
-                    sendEvent.NetworkEntityGuid = networkEntity;
+                    sendEvent.NetworkEntityUid = networkEntity;
                 }
             }
         }
@@ -305,7 +305,7 @@ namespace Leopotam.Ecs.Net
 
         protected override void PrepareComponentToNetwork(PrepareComponentToSendEvent<TEvent> prepareComponent)
         {
-            TEvent componentToSend = EcsWorld.GetComponent<TEvent>(prepareComponent.LocalEntityId);
+            TEvent componentToSend = EcsWorld.GetComponent<TEvent>(prepareComponent.LocalEntityUid);
             bool componentWasRemoved = prepareComponent.ComponentFlags.HasFlag(EcsNetComponentFlags.WAS_REMOVED);
 #if DEBUG
             if (!componentWasRemoved && componentToSend == null)
@@ -315,9 +315,9 @@ namespace Leopotam.Ecs.Net
 #endif
             
             EcsWorld.CreateEntityWith(out SendNetworkComponentEvent sendEvent);
-            sendEvent.ComponentNetworkUid = ComponentUid;
+            sendEvent.ComponentTypeUid = ComponentUid;
             sendEvent.ComponentFlags = prepareComponent.ComponentFlags;
-            sendEvent.NetworkEntityGuid = Guid.Empty;
+            sendEvent.NetworkEntityUid = 0;
             sendEvent.ComponentBytes = NetworkConfig.Data.Serializator.GetBytesFromComponent(componentToSend);
         }
     }

@@ -18,9 +18,9 @@ namespace Leopotam.Ecs.Net
     [AttributeUsage(AttributeTargets.Class, Inherited = false)]
     public class EcsNetComponentUidAttribute : Attribute
     {
-        public long Uid { get; }
+        public int Uid { get; }
 
-        public EcsNetComponentUidAttribute(long uid)
+        public EcsNetComponentUidAttribute(int uid)
         {
             Uid = uid;
         }
@@ -28,9 +28,10 @@ namespace Leopotam.Ecs.Net
     
     public class EcsNetworkConfig
     {
-        public Guid ThisClientGuid;
-        public Dictionary<Guid, int> NetworkEntitiesGuidToLocal;
-        public Dictionary<int, Guid> LocalEntitiesToNetworkGuid;
+        public readonly Random Random = new Random();
+        public int ThisClientId;
+        public Dictionary<long, int> NetworkEntitiesToLocal;
+        public Dictionary<int, long> LocalEntitiesToNetwork;
 
         public IRetranslator Retranslator;
         public ISerializator Serializator;
@@ -38,9 +39,9 @@ namespace Leopotam.Ecs.Net
 
     public static class RandomExtensions
     {
-        public static Int64 NextInt64(this Random rnd)
+        public static long NextInt64(this Random rnd)
         {
-            var buffer = new byte[sizeof(Int64)];
+            var buffer = new byte[sizeof(long)];
             rnd.NextBytes(buffer);
             return BitConverter.ToInt64(buffer, 0);
         }
