@@ -7,8 +7,7 @@
         {
             ecsWorld.CreateEntityWith(out PrepareComponentToSendEvent<TComponent> prepare);
             prepare.LocalEntityId = entity;
-            prepare.WasRemoved = false;
-            prepare.Type = EcsNetTypes.COMPONENT;
+            prepare.ComponentFlags = 0;
         }
         
         public static void SendRemovedComponentToNetwork<TComponent>(this EcsWorld ecsWorld, int entity) 
@@ -16,8 +15,7 @@
         {
             ecsWorld.CreateEntityWith(out PrepareComponentToSendEvent<TComponent> prepare);
             prepare.LocalEntityId = entity;
-            prepare.WasRemoved = true;
-            prepare.Type = EcsNetTypes.COMPONENT;
+            prepare.ComponentFlags = EcsNetComponentFlags.WAS_REMOVED;
         }
         
         public static TEvent SendEventToNetwork<TEvent>(this EcsWorld ecsWorld) 
@@ -26,8 +24,7 @@
             int entity = ecsWorld.CreateEntityWith(out TEvent newEvent);
             ecsWorld.CreateEntityWith(out PrepareComponentToSendEvent<TEvent> prepare);
             prepare.LocalEntityId = entity;
-            prepare.WasRemoved = false;
-            prepare.Type = EcsNetTypes.EVENT;
+            prepare.ComponentFlags = EcsNetComponentFlags.IS_EVENT;
 
             return newEvent;
         }

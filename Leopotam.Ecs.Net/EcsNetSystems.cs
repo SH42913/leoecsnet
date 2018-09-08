@@ -96,11 +96,10 @@ namespace Leopotam.Ecs.Net
             foreach (var receivedComponent in _config.Data.Retranslator.GetReceivedComponents())
             {
                 _ecsWorld.CreateEntityWith(out ReceivedNetworkComponentEvent receivedNetworkComponentEvent);
-                receivedNetworkComponentEvent.Type = receivedComponent.Type;
+                receivedNetworkComponentEvent.ComponentFlags = receivedComponent.ComponentFlags;
                 receivedNetworkComponentEvent.NetworkEntityGuid = receivedComponent.NetworkEntityGuid;
                 receivedNetworkComponentEvent.ComponentNetworkUid = receivedComponent.ComponentNetworkUid;
                 receivedNetworkComponentEvent.ComponentBytes = receivedComponent.ComponentBytes;
-                receivedNetworkComponentEvent.WasRemoved = receivedComponent.WasRemoved;
             }
         }
 
@@ -115,7 +114,6 @@ namespace Leopotam.Ecs.Net
         where T : class, new()
     {
         public long ComponentUid { get; protected set; }
-        public EcsNetTypes Type { get; protected set; }
         
         protected EcsWorld EcsWorld = null;
         protected EcsFilterSingle<EcsNetworkConfig> NetworkConfig = null;
@@ -186,7 +184,6 @@ namespace Leopotam.Ecs.Net
         public NetworkComponentProcessSystem(Action<TComponent, TComponent> componentUpdateAction)
         {
             ComponentUpdateAction = componentUpdateAction;
-            Type = EcsNetTypes.COMPONENT;
         }
 
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
@@ -195,8 +192,9 @@ namespace Leopotam.Ecs.Net
             Guid networkEntity = received.NetworkEntityGuid;
             bool localEntityExist = NetworkConfig.Data.NetworkEntitiesGuidToLocal.ContainsKey(networkEntity);
             int localEntity;
+            bool componentWasRemoved = received.ComponentFlags.HasFlag(EcsNetComponentFlags.WAS_REMOVED);
 
-            if (received.WasRemoved && !localEntityExist)
+            if (componentWasRemoved && !localEntityExist)
             {
 #if DEBUG
                 throw new Exception($"Attempt to remove {typeof(TComponent).Name} for non exist local entity");
@@ -215,7 +213,7 @@ namespace Leopotam.Ecs.Net
                 AddNetworkToLocalEntity(received.NetworkEntityGuid, localEntity);
             }
 
-            if (received.WasRemoved)
+            if (componentWasRemoved)
             {
                 EcsWorld.RemoveComponent<TComponent>(localEntity);
                 if(EcsWorld.IsEntityExists(localEntity)) return;
@@ -232,8 +230,10 @@ namespace Leopotam.Ecs.Net
         protected override void PrepareComponentToNetwork(PrepareComponentToSendEvent<TComponent> prepareComponent)
         {
             TComponent componentToSend = EcsWorld.GetComponent<TComponent>(prepareComponent.LocalEntityId);
+            bool componentWasRemoved = prepareComponent.ComponentFlags.HasFlag(EcsNetComponentFlags.WAS_REMOVED);
+            
 #if DEBUG
-            if (!prepareComponent.WasRemoved && componentToSend == null)
+            if (!componentWasRemoved && componentToSend == null)
             {
                 throw new Exception($"{typeof(TComponent).Name} doesn't exist on this entity");
             }
@@ -241,14 +241,13 @@ namespace Leopotam.Ecs.Net
             
             EcsWorld.CreateEntityWith(out SendNetworkComponentEvent sendEvent);
             sendEvent.ComponentNetworkUid = ComponentUid;
-            sendEvent.Type = prepareComponent.Type;
-            sendEvent.WasRemoved = prepareComponent.WasRemoved;
+            sendEvent.ComponentFlags = prepareComponent.ComponentFlags;
 
             int localEntity = prepareComponent.LocalEntityId;
             bool localEntityExist = NetworkConfig.Data.LocalEntitiesToNetworkGuid.ContainsKey(localEntity);
             Guid networkEntity;
 
-            if (prepareComponent.WasRemoved)
+            if (componentWasRemoved)
             {
 #if DEBUG
                 if (!localEntityExist)
@@ -295,7 +294,6 @@ namespace Leopotam.Ecs.Net
         public NetworkEventProcessSystem(Action<TEvent, TEvent> eventUpdateAction)
         {
             EventUpdateAction = eventUpdateAction;
-            Type = EcsNetTypes.EVENT;
         }
         
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
@@ -308,8 +306,9 @@ namespace Leopotam.Ecs.Net
         protected override void PrepareComponentToNetwork(PrepareComponentToSendEvent<TEvent> prepareComponent)
         {
             TEvent componentToSend = EcsWorld.GetComponent<TEvent>(prepareComponent.LocalEntityId);
+            bool componentWasRemoved = prepareComponent.ComponentFlags.HasFlag(EcsNetComponentFlags.WAS_REMOVED);
 #if DEBUG
-            if (!prepareComponent.WasRemoved && componentToSend == null)
+            if (!componentWasRemoved && componentToSend == null)
             {
                 throw new Exception($"Component {nameof(TEvent)} doesn't exist on this entity");
             }
@@ -317,8 +316,7 @@ namespace Leopotam.Ecs.Net
             
             EcsWorld.CreateEntityWith(out SendNetworkComponentEvent sendEvent);
             sendEvent.ComponentNetworkUid = ComponentUid;
-            sendEvent.Type = prepareComponent.Type;
-            sendEvent.WasRemoved = prepareComponent.WasRemoved;
+            sendEvent.ComponentFlags = prepareComponent.ComponentFlags;
             sendEvent.NetworkEntityGuid = Guid.Empty;
             sendEvent.ComponentBytes = NetworkConfig.Data.Serializator.GetBytesFromComponent(componentToSend);
         }

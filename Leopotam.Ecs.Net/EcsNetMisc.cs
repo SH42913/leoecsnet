@@ -3,10 +3,11 @@ using System.Collections.Generic;
 
 namespace Leopotam.Ecs.Net
 {
-    public enum EcsNetTypes
+    [Flags]
+    public enum EcsNetComponentFlags
     {
-        COMPONENT,
-        EVENT
+        IS_EVENT = 1,
+        WAS_REMOVED = 2
     }
     
     public class ClientInfo

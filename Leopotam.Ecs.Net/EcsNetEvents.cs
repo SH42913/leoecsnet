@@ -4,11 +4,10 @@ namespace Leopotam.Ecs.Net
 {
     public abstract class BaseNetworkComponentEvent
     {
-        public EcsNetTypes Type;
+        public EcsNetComponentFlags ComponentFlags;
         public Guid NetworkEntityGuid;
         public long ComponentNetworkUid;
         public byte[] ComponentBytes;
-        public bool WasRemoved;
     }
     
     public class ReceivedNetworkComponentEvent : BaseNetworkComponentEvent
@@ -24,8 +23,7 @@ namespace Leopotam.Ecs.Net
     public class PrepareComponentToSendEvent<TComponent> where TComponent : class, new()
     {
         public int LocalEntityId;
-        public EcsNetTypes Type;
-        public bool WasRemoved;
+        public EcsNetComponentFlags ComponentFlags;
     }
     
     public class StartRetranslatorEvent
