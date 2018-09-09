@@ -114,7 +114,8 @@ namespace Leopotam.Ecs.Net
         {
             foreach (var receivedComponent in _config.Data.EcsNetworkListener.GetReceivedComponents())
             {
-                _ecsWorld.CreateEntityWith(out ReceivedNetworkComponentEvent receivedNetworkComponentEvent);
+                ReceivedNetworkComponentEvent receivedNetworkComponentEvent;
+                _ecsWorld.CreateEntityWith(out receivedNetworkComponentEvent);
                 receivedNetworkComponentEvent.ComponentFlags = receivedComponent.ComponentFlags;
                 receivedNetworkComponentEvent.NetworkEntityUid = receivedComponent.NetworkEntityUid;
                 receivedNetworkComponentEvent.ComponentTypeUid = receivedComponent.ComponentTypeUid;
@@ -259,8 +260,8 @@ namespace Leopotam.Ecs.Net
                 throw new Exception($"{typeof(TComponent).Name} doesn't exist on this entity");
             }
 #endif
-            
-            EcsWorld.CreateEntityWith(out SendNetworkComponentEvent sendEvent);
+            SendNetworkComponentEvent sendEvent;
+            EcsWorld.CreateEntityWith(out sendEvent);
             sendEvent.ComponentTypeUid = ComponentUid;
             sendEvent.ComponentFlags = prepareComponent.ComponentFlags;
 
@@ -319,8 +320,9 @@ namespace Leopotam.Ecs.Net
         
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
         {
+            TEvent newEvent;
             var receivedEvent = NetworkConfig.Data.Serializator.GetComponentFromBytes<TEvent>(received.ComponentBytes);
-            EcsWorld.CreateEntityWith(out TEvent newEvent);
+            EcsWorld.CreateEntityWith(out newEvent);
             EventUpdateAction(receivedEvent, newEvent);
         }
 
@@ -334,8 +336,8 @@ namespace Leopotam.Ecs.Net
                 throw new Exception($"Component {nameof(TEvent)} doesn't exist on this entity");
             }
 #endif
-            
-            EcsWorld.CreateEntityWith(out SendNetworkComponentEvent sendEvent);
+            SendNetworkComponentEvent sendEvent;
+            EcsWorld.CreateEntityWith(out sendEvent);
             sendEvent.ComponentTypeUid = ComponentUid;
             sendEvent.ComponentFlags = prepareComponent.ComponentFlags;
             sendEvent.NetworkEntityUid = 0;
