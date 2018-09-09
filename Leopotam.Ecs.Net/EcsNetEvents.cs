@@ -49,4 +49,9 @@
     {
         public ClientInfo DisconnectedClient;
     }
+
+    public class NewEntityReceivedEvent
+    {
+        public int LocalEntity;
+    }
 }

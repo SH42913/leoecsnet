@@ -11,8 +11,10 @@ namespace Leopotam.Ecs.Net
 
         private EcsFilter<StartListenerEvent> _startEvents = null;
         private EcsFilter<StopListenerEvent> _stopEvents = null;
+        
         private EcsFilter<SendNetworkComponentEvent> _sendEvents = null;
         private EcsFilter<ConnectToEvent> _connectEvents = null;
+        private EcsFilter<NewEntityReceivedEvent> _newEntities = null;
 
         private EcsFilter<ClientConnectedEvent> _connectedClients = null;
         private EcsFilter<ClientDisconnectedEvent> _disconnectedClients = null;
@@ -112,6 +114,7 @@ namespace Leopotam.Ecs.Net
 
         private void ReceiveComponents()
         {
+            _newEntities.RemoveAllEntities();
             foreach (var receivedComponent in _config.Data.EcsNetworkListener.GetReceivedComponents())
             {
                 ReceivedNetworkComponentEvent receivedNetworkComponentEvent;
@@ -232,6 +235,7 @@ namespace Leopotam.Ecs.Net
             else
             {
                 localEntity = EcsWorld.CreateEntityWith(out oldComponent);
+                EcsWorld.CreateEntityWith<NewEntityReceivedEvent>().LocalEntity = localEntity;
                 AddNetworkToLocalEntity(received.NetworkEntityUid, localEntity);
             }
 
