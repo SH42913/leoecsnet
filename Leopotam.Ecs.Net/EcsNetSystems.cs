@@ -15,6 +15,7 @@ namespace Leopotam.Ecs.Net
         private EcsFilter<SendNetworkComponentEvent> _sendEvents = null;
         private EcsFilter<ConnectToEvent> _connectEvents = null;
         private EcsFilter<NewEntityReceivedEvent> _newEntities = null;
+        private EcsFilter<ReceivedNetworkComponentEvent> _receivedComponents = null;
 
         private EcsFilter<ClientConnectedEvent> _connectedClients = null;
         private EcsFilter<ClientDisconnectedEvent> _disconnectedClients = null;
@@ -115,6 +116,12 @@ namespace Leopotam.Ecs.Net
         private void ReceiveComponents()
         {
             _newEntities.RemoveAllEntities();
+#if DEBUG
+            if (_receivedComponents.EntitiesCount > 0)
+            {
+                throw new Exception("Not all received components was processed. Did you register all NetworkComponentProcessSystems?");
+            }
+#endif
             foreach (var receivedComponent in _config.Data.EcsNetworkListener.GetReceivedComponents())
             {
                 ReceivedNetworkComponentEvent receivedNetworkComponentEvent;
