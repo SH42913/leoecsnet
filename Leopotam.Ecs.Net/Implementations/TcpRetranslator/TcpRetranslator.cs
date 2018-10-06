@@ -82,15 +82,23 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
 
         public IEnumerable<ClientInfo> GetConnectedClients()
         {
-            var connected = _connectedClients.ToArray();
-            _connectedClients.Clear();
+            ClientInfo[] connected;
+            lock (_locker)
+            {
+                connected = _connectedClients.ToArray();
+                _connectedClients.Clear();
+            }
             return connected;
         }
 
         public IEnumerable<ClientInfo> GetDisconnectedClients()
         {
-            var disconnected = _disconnectedClients.ToArray();
-            _disconnectedClients.Clear();
+            ClientInfo[] disconnected;
+            lock (_locker)
+            {
+                disconnected = _disconnectedClients.ToArray();
+                _disconnectedClients.Clear();
+            }
             return disconnected;
         }
 
