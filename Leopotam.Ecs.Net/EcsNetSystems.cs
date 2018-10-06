@@ -11,7 +11,7 @@ namespace Leopotam.Ecs.Net
 
         private EcsFilter<StartListenerEvent> _startEvents = null;
         private EcsFilter<StopListenerEvent> _stopEvents = null;
-        
+
         private EcsFilter<SendNetworkComponentEvent> _sendEvents = null;
         private EcsFilter<ConnectToEvent> _connectEvents = null;
         private EcsFilter<NewEntityReceivedEvent> _newEntities = null;
@@ -25,7 +25,7 @@ namespace Leopotam.Ecs.Net
             _config.Data.LocalEntitiesToNetwork = new Dictionary<int, long>();
             _config.Data.NetworkEntitiesToLocal = new Dictionary<long, int>();
         }
-        
+
         public void Run()
         {
             StartStopListener();
@@ -41,7 +41,6 @@ namespace Leopotam.Ecs.Net
                 if (!_config.Data.EcsNetworkListener.IsRunning)
                 {
                     _config.Data.EcsNetworkListener.Start(_config.Data);
-                    Console.WriteLine("Listener started");
                 }
 #if DEBUG
                 else
@@ -49,16 +48,15 @@ namespace Leopotam.Ecs.Net
                     throw new Exception("EcsNetworkListener is already started");
                 }
 #endif
-                
+
                 _startEvents.RemoveAllEntities();
             }
-            
+
             if (_stopEvents.EntitiesCount > 0)
             {
                 if (_config.Data.EcsNetworkListener.IsRunning)
                 {
                     _config.Data.EcsNetworkListener.Stop();
-                    Console.WriteLine("Listener stopped");
                 }
 #if DEBUG
                 else
@@ -66,7 +64,7 @@ namespace Leopotam.Ecs.Net
                     throw new Exception("EcsNetworkListener is already stopped");
                 }
 #endif
-                
+
                 _stopEvents.RemoveAllEntities();
             }
         }
@@ -78,6 +76,7 @@ namespace Leopotam.Ecs.Net
                 _connectedClients.Components1[i].ConnectedClient = null;
                 _ecsWorld.RemoveEntity(_connectedClients.Entities[i]);
             }
+
             foreach (ClientInfo clientInfo in _config.Data.EcsNetworkListener.GetConnectedClients())
             {
                 _ecsWorld.CreateEntityWith<ClientConnectedEvent>().ConnectedClient = clientInfo;
@@ -88,6 +87,7 @@ namespace Leopotam.Ecs.Net
                 _disconnectedClients.Components1[i].DisconnectedClient = null;
                 _ecsWorld.RemoveEntity(_disconnectedClients.Entities[i]);
             }
+
             foreach (ClientInfo clientInfo in _config.Data.EcsNetworkListener.GetDisconnectedClients())
             {
                 _ecsWorld.CreateEntityWith<ClientDisconnectedEvent>().DisconnectedClient = clientInfo;
@@ -108,8 +108,8 @@ namespace Leopotam.Ecs.Net
                 var sendEvent = _sendEvents.Components1[i];
                 _config.Data.EcsNetworkListener.SendComponent(sendEvent);
                 sendEvent.ComponentBytes = null;
-                Console.WriteLine($"Component {sendEvent.ComponentTypeUid} sended");
             }
+
             _sendEvents.RemoveAllEntities();
         }
 
@@ -119,7 +119,8 @@ namespace Leopotam.Ecs.Net
 #if DEBUG
             if (_receivedComponents.EntitiesCount > 0)
             {
-                throw new Exception("Not all received components was processed. Did you register all NetworkComponentProcessSystems?");
+                throw new Exception("Not all received components was processed. " +
+                                    "Did you register all NetworkComponentProcessSystems?");
             }
 #endif
             foreach (var receivedComponent in _config.Data.EcsNetworkListener.GetReceivedComponents())
@@ -130,29 +131,26 @@ namespace Leopotam.Ecs.Net
                 receivedNetworkComponentEvent.NetworkEntityUid = receivedComponent.NetworkEntityUid;
                 receivedNetworkComponentEvent.ComponentTypeUid = receivedComponent.ComponentTypeUid;
                 receivedNetworkComponentEvent.ComponentBytes = receivedComponent.ComponentBytes;
-                
-                Console.WriteLine($"Component {receivedComponent.ComponentTypeUid} received");
             }
         }
 
         public void Destroy()
         {
-            
         }
     }
-    
+
     [EcsInject]
     public abstract class BaseNetworkProcessSystem<T> : IEcsInitSystem, IEcsRunSystem
         where T : class, new()
     {
         public short ComponentUid { get; protected set; }
-        
+
         protected EcsWorld EcsWorld = null;
         protected EcsFilterSingle<EcsNetworkConfig> NetworkConfig = null;
 
         protected EcsFilter<ReceivedNetworkComponentEvent> ReceivedComponents = null;
         protected EcsFilter<PrepareComponentToSendEvent<T>> ComponentsToPrepare = null;
-        
+
         public void Initialize()
         {
             var attr = Attribute
@@ -165,14 +163,14 @@ namespace Leopotam.Ecs.Net
 #endif
             ComponentUid = attr.Uid;
         }
-        
+
         public void Run()
         {
             for (int i = 0; i < ReceivedComponents.EntitiesCount; i++)
             {
                 var receivedComponent = ReceivedComponents.Components1[i];
                 if (receivedComponent.ComponentTypeUid != ComponentUid) continue;
-                
+
                 ProcessReceivedComponent(receivedComponent);
                 receivedComponent.ComponentBytes = null;
                 EcsWorld.RemoveEntity(ReceivedComponents.Entities[i]);
@@ -182,13 +180,14 @@ namespace Leopotam.Ecs.Net
             {
                 PrepareComponentToNetwork(ComponentsToPrepare.Components1[i]);
             }
+
             ComponentsToPrepare.RemoveAllEntities();
         }
 
         protected abstract void ProcessReceivedComponent(ReceivedNetworkComponentEvent receivedComponent);
 
         protected abstract void PrepareComponentToNetwork(PrepareComponentToSendEvent<T> componentToNetwork);
-        
+
         protected void AddNetworkToLocalEntity(long network, int local)
         {
             NetworkConfig.Data.NetworkEntitiesToLocal.Add(network, local);
@@ -203,10 +202,9 @@ namespace Leopotam.Ecs.Net
 
         public void Destroy()
         {
-            
         }
     }
-    
+
     [EcsInject]
     public sealed class NetworkComponentProcessSystem<TComponent> : BaseNetworkProcessSystem<TComponent>
         where TComponent : class, new()
@@ -233,11 +231,11 @@ namespace Leopotam.Ecs.Net
 #endif
                 return;
             }
-            
+
             if (localEntityExist)
             {
                 localEntity = NetworkConfig.Data.NetworkEntitiesToLocal[received.NetworkEntityUid];
-                oldComponent = EcsWorld.EnsureComponent<TComponent>(localEntity);
+                oldComponent = EcsWorld.EnsureComponent<TComponent>(localEntity, out _);
             }
             else
             {
@@ -249,13 +247,14 @@ namespace Leopotam.Ecs.Net
             if (componentWasRemoved)
             {
                 EcsWorld.RemoveComponent<TComponent>(localEntity);
-                if(EcsWorld.IsEntityExists(localEntity)) return;
-                
+                if (EcsWorld.IsEntityExists(localEntity)) return;
+
                 RemoveNetworkToLocalEntity(networkEntity, localEntity);
             }
             else
             {
-                var newComponent = NetworkConfig.Data.Serializator.GetComponentFromBytes<TComponent>(received.ComponentBytes);
+                var newComponent =
+                    NetworkConfig.Data.Serializator.GetComponentFromBytes<TComponent>(received.ComponentBytes);
                 ComponentUpdateAction(newComponent, oldComponent);
             }
         }
@@ -264,7 +263,7 @@ namespace Leopotam.Ecs.Net
         {
             TComponent componentToSend = EcsWorld.GetComponent<TComponent>(prepareComponent.LocalEntityUid);
             bool componentWasRemoved = prepareComponent.ComponentFlags.HasFlag(EcsNetComponentFlags.WAS_REMOVED);
-            
+
 #if DEBUG
             if (!componentWasRemoved && componentToSend == null)
             {
@@ -285,22 +284,22 @@ namespace Leopotam.Ecs.Net
 #if DEBUG
                 if (!localEntityExist)
                 {
-                    throw new Exception($"You tried to send removed {typeof(TComponent).Name} for not network entity");
+                    throw new Exception($"You've tried to send removed {typeof(TComponent).Name} for not network entity");
                 }
 #endif
-                
+
                 networkEntity = NetworkConfig
                     .Data
                     .LocalEntitiesToNetwork[localEntity];
                 sendEvent.NetworkEntityUid = networkEntity;
-                
-                if(EcsWorld.IsEntityExists(localEntity)) return;
+
+                if (EcsWorld.IsEntityExists(localEntity)) return;
                 RemoveNetworkToLocalEntity(networkEntity, localEntity);
             }
             else
             {
                 sendEvent.ComponentBytes = NetworkConfig.Data.Serializator.GetBytesFromComponent(componentToSend);
-                
+
                 if (localEntityExist)
                 {
                     networkEntity = NetworkConfig
@@ -317,7 +316,7 @@ namespace Leopotam.Ecs.Net
             }
         }
     }
-    
+
     [EcsInject]
     public sealed class NetworkEventProcessSystem<TEvent> : BaseNetworkProcessSystem<TEvent>
         where TEvent : class, new()
@@ -328,7 +327,7 @@ namespace Leopotam.Ecs.Net
         {
             EventUpdateAction = eventUpdateAction;
         }
-        
+
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
         {
             TEvent newEvent;

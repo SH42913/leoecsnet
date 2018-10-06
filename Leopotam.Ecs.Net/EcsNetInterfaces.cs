@@ -1,4 +1,6 @@
-﻿namespace Leopotam.Ecs.Net
+﻿using System.Collections.Generic;
+
+namespace Leopotam.Ecs.Net
 {
     public interface ISerializator
     {
@@ -15,10 +17,10 @@
 
         void Connect(string address, short port);
         
-        ClientInfo[] GetConnectedClients();
-        ClientInfo[] GetDisconnectedClients();
+        IEnumerable<ClientInfo> GetConnectedClients();
+        IEnumerable<ClientInfo> GetDisconnectedClients();
         
         void SendComponent(SendNetworkComponentEvent component);
-        ReceivedNetworkComponentEvent[] GetReceivedComponents();
+        IEnumerable<ReceivedNetworkComponentEvent> GetReceivedComponents();
     }
 }

@@ -74,14 +74,14 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             });
         }
 
-        public ClientInfo[] GetConnectedClients()
+        public IEnumerable<ClientInfo> GetConnectedClients()
         {
             var connected = _connectedClients.ToArray();
             _connectedClients.Clear();
             return connected;
         }
 
-        public ClientInfo[] GetDisconnectedClients()
+        public IEnumerable<ClientInfo> GetDisconnectedClients()
         {
             var disconnected = _disconnectedClients.ToArray();
             _disconnectedClients.Clear();
@@ -138,7 +138,7 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             }
         }
 
-        public ReceivedNetworkComponentEvent[] GetReceivedComponents()
+        public IEnumerable<ReceivedNetworkComponentEvent> GetReceivedComponents()
         {
             var received = _receivedComponents.ToArray();
             _receivedComponents.Clear();
@@ -154,7 +154,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             Retranslator current = CheckAlreadyHasSendClient(address, port);
             if (current != null)
             {
-                Console.WriteLine("Connection is success");
                 current.ReceiveClient = receiveClient;
                 return;
             }
@@ -166,7 +165,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             sendStream.WriteByte((byte) _config.LocalAddress.Length);
             sendStream.WriteAsciiString(_config.LocalAddress);
             sendStream.WriteShort(_config.LocalPort);
-            Console.WriteLine("Client connected");
                     
             _retranslators.Add(new Retranslator
             {
@@ -226,7 +224,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         private void SendComponentsToOtherRetranslator()
         {
             if(_eventsForSend.Count <= 0 && _componentsForSend.Count <= 0) return;
-            Console.WriteLine($"Try to sending components E{_eventsForSend.Count}/C{_componentsForSend.Count}");
             
             foreach (Retranslator retranslator in _retranslators)
             {
@@ -242,7 +239,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
                 }
                 catch (Exception)
                 {
-                    Console.WriteLine($"Retranslator {retranslator.Address}:{retranslator.Port} disconnected");
                     CloseRetranslator(retranslator);
                 }
             }
@@ -269,7 +265,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             };
 
             short eventSize = stream.ReadShort();
-            Console.WriteLine($"Received event ${receivedEvent.ComponentTypeUid} size {eventSize} flags {receivedEvent.ComponentFlags}");
             byte[] eventBytes = new byte[eventSize];
             stream.Read(eventBytes, 0, eventSize);
             receivedEvent.ComponentBytes = eventBytes;
@@ -302,7 +297,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
 
             short componentSize = stream.ReadShort();
             byte[] componentBytes = new byte[componentSize];
-            Console.WriteLine($"Received component ${receivedNetworkComponent.ComponentTypeUid} size {componentSize} flags {receivedNetworkComponent.ComponentFlags}");
             stream.Read(componentBytes, 0, componentSize);
             receivedNetworkComponent.ComponentBytes = componentBytes;
             
@@ -348,7 +342,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             stream.WriteByte((byte) component.Flags);
             stream.WriteShort((short) component.Bytes.Length);
             stream.Write(component.Bytes, 0, component.Bytes.Length);
-            Console.WriteLine($"Component {component.ComponentUid} flags {component.Flags} with bytes {component.Bytes.Length} sended");
         }
 
         private void CloseRetranslator(Retranslator retranslator)
