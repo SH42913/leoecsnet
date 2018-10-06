@@ -31,6 +31,7 @@ namespace Leopotam.Ecs.Net
     
     public class EcsNetworkConfig
     {
+        [EcsIgnoreNullCheck]
         public readonly Random Random = new Random();
         
         public string LocalAddress;

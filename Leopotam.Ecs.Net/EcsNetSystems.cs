@@ -136,6 +136,13 @@ namespace Leopotam.Ecs.Net
 
         public void Destroy()
         {
+            if (_config.Data.EcsNetworkListener.IsRunning)
+            {
+                _config.Data.EcsNetworkListener.Stop();
+            }
+            _config.Data.EcsNetworkListener = null;
+            _config.Data.LocalEntitiesToNetwork = null;
+            _config.Data.NetworkEntitiesToLocal = null;
         }
     }
 
@@ -235,7 +242,8 @@ namespace Leopotam.Ecs.Net
             if (localEntityExist)
             {
                 localEntity = NetworkConfig.Data.NetworkEntitiesToLocal[received.NetworkEntityUid];
-                oldComponent = EcsWorld.EnsureComponent<TComponent>(localEntity, out _);
+                bool isNew;
+                oldComponent = EcsWorld.EnsureComponent<TComponent>(localEntity, out isNew);
             }
             else
             {

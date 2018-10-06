@@ -39,8 +39,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         private EcsNetworkConfig _config;
         private TcpListener _listener;
 
-        private Task<TcpClient> _newClientTask;
-
         public void Start(EcsNetworkConfig config)
         {
             _config = config;
@@ -48,12 +46,14 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
 
             IsRunning = true;
             _listener.Start();
-            _newClientTask = _listener.AcceptTcpClientAsync();
-            Task.Run(() => ListenForRetranslators());
+            Task.Run(() => ListenForNewClients());
+            Task.Run(() => SendAllToOtherRetranslators());
         }
 
         public void Stop()
         {
+            if(!IsRunning) return;
+            
             _listener.Stop();
             IsRunning = false;
         }
@@ -62,6 +62,7 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         {
             TcpClient sendClient = new TcpClient(address, port);
             NetworkStream sendStream = sendClient.GetStream();
+            
             sendStream.WriteByte((byte) _config.LocalAddress.Length);
             sendStream.WriteAsciiString(_config.LocalAddress);
             sendStream.WriteShort(_config.LocalPort);
@@ -145,37 +146,56 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             return received;
         }
 
+        private void ListenForNewClients()
+        {
+            try
+            {
+                while (IsRunning)
+                {
+                    TcpClient newClient = _listener.AcceptTcpClient();
+                    AcceptNewClient(newClient);
+                }
+            }
+            finally
+            {
+                Stop();
+            }
+        }
+
         private void AcceptNewClient(TcpClient receiveClient)
         {
             NetworkStream receiveStream = receiveClient.GetStream();
+            
             int addressLength = receiveStream.ReadByte();
             string address = receiveStream.ReadAsciiString(addressLength);
             short port = receiveStream.ReadShort();
-            Retranslator current = CheckAlreadyHasSendClient(address, port);
-            if (current != null)
+            Retranslator existingRetranslator = GetRetranslatorIfExistOrNull(address, port);
+            
+            if (existingRetranslator != null)
             {
-                current.ReceiveClient = receiveClient;
+                existingRetranslator.ReceiveClient = receiveClient;
+                FinalizeConnection(existingRetranslator);
                 return;
             }
                     
             TcpClient sendClient = new TcpClient(address, port);
-            _connectedClients.Add(new ClientInfo{Address = address, Port = port});
-
             NetworkStream sendStream = sendClient.GetStream();
             sendStream.WriteByte((byte) _config.LocalAddress.Length);
             sendStream.WriteAsciiString(_config.LocalAddress);
             sendStream.WriteShort(_config.LocalPort);
-                    
-            _retranslators.Add(new Retranslator
+
+            var newRetranslator = new Retranslator
             {
                 Address = address,
                 Port = port,
                 ReceiveClient = receiveClient,
                 SendClient = sendClient
-            });
+            };
+            _retranslators.Add(newRetranslator);
+            FinalizeConnection(newRetranslator);
         }
 
-        private Retranslator CheckAlreadyHasSendClient(string address, int port)
+        private Retranslator GetRetranslatorIfExistOrNull(string address, int port)
         {
             foreach (Retranslator retranslator in _retranslators)
             {
@@ -185,65 +205,63 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             return null;
         }
 
-        private void ListenForRetranslators()
+        private void FinalizeConnection(Retranslator retranslator)
         {
-            while (IsRunning)
+            _connectedClients.Add(new ClientInfo
             {
-                if (_newClientTask.IsCompleted)
-                {
-                    AcceptNewClient(_newClientTask.Result);
-                    _newClientTask = _listener.AcceptTcpClientAsync();
-                }
-                ListenForNewComponents();
-                SendComponentsToOtherRetranslator();
-            }
+                Address = retranslator.Address,
+                Port = retranslator.Port
+            });
+            Task.Run(() => StartListenForNewComponents(retranslator));
         }
 
-        private void ListenForNewComponents()
-        {
-            foreach (Retranslator retranslator in _retranslators)
-            {
-                TcpClient receiveClient = retranslator.ReceiveClient;
-
-                try
-                {
-                    if(receiveClient == null || receiveClient.Available <= 0) continue;
-                    NetworkStream stream = receiveClient.GetStream();
-                    
-                    ReceiveEvents(stream);
-                    ReceiveComponents(stream);
-                }
-                catch (Exception)
-                {
-                    CloseRetranslator(retranslator);
-                }
-            }
-        }
-
-        private void SendComponentsToOtherRetranslator()
+        private void SendAllToOtherRetranslators()
         {
             if(_eventsForSend.Count <= 0 && _componentsForSend.Count <= 0) return;
-            
-            foreach (Retranslator retranslator in _retranslators)
-            {
-                TcpClient sendClient = retranslator.SendClient;
 
-                try
+            lock (_locker)
+            {
+                foreach (Retranslator retranslator in _retranslators)
                 {
-                    if(sendClient == null) continue;
-                    NetworkStream stream = sendClient.GetStream();
-                    
-                    SendAllEventsToNetwork(stream);
-                    SendAllComponentsToNetwork(stream);
+                    TcpClient sendClient = retranslator.SendClient;
+
+                    try
+                    {
+                        NetworkStream stream = sendClient.GetStream();
+                        SendAllEventsToNetwork(stream);
+                        SendAllComponentsToNetwork(stream);
+                    }
+                    catch (Exception)
+                    {
+                        CloseRetranslator(retranslator);
+                    }
                 }
-                catch (Exception)
+            
+                _eventsForSend.Clear();
+                _componentsForSend.Clear();
+            }
+        }
+
+        private void StartListenForNewComponents(Retranslator retranslator)
+        {
+            TcpClient receiveClient = retranslator.ReceiveClient;
+            NetworkStream stream = receiveClient.GetStream();
+
+            try
+            {
+                while (IsRunning)
                 {
-                    CloseRetranslator(retranslator);
+                    lock (_locker)
+                    {
+                        ReceiveEvents(stream);
+                        ReceiveComponents(stream);
+                    }
                 }
             }
-            
-            _eventsForSend.Clear();
-            _componentsForSend.Clear();
+            finally
+            {
+                CloseRetranslator(retranslator);
+            }         
         }
 
         private void ReceiveEvents(NetworkStream stream)
@@ -306,12 +324,9 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         {
             stream.WriteShort((short) _eventsForSend.Count);
 
-            lock (_locker)
+            foreach (Component eventToSend in _eventsForSend)
             {
-                foreach (Component eventToSend in _eventsForSend)
-                {
-                    SendComponentToNetwork(stream, eventToSend);
-                }
+                SendComponentToNetwork(stream, eventToSend);
             }
         }
 
@@ -319,18 +334,15 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         {
             stream.WriteShort((short) _componentsForSend.Keys.Count);
 
-            lock (_locker)
+            foreach (long networkEntity in _componentsForSend.Keys)
             {
-                foreach (long networkEntity in _componentsForSend.Keys)
-                {
-                    stream.WriteLong(networkEntity);
+                stream.WriteLong(networkEntity);
                 
-                    var components = _componentsForSend[networkEntity];
-                    stream.WriteShort((short) components.Count);
-                    foreach (Component componentToSend in components)
-                    {
-                        SendComponentToNetwork(stream, componentToSend);
-                    }
+                var components = _componentsForSend[networkEntity];
+                stream.WriteShort((short) components.Count);
+                foreach (Component componentToSend in components)
+                {
+                    SendComponentToNetwork(stream, componentToSend);
                 }
             }
         }
