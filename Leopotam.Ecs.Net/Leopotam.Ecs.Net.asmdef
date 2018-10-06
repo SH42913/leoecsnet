@@ -1,0 +1,10 @@
+{
+    "name": "Leopotam.Ecs.Net",
+    "references": [
+        "Leopotam.Ecs"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}
