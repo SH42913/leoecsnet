@@ -106,11 +106,12 @@ namespace Leopotam.Ecs.Net
             for (int i = 0; i < _sendEvents.EntitiesCount; i++)
             {
                 var sendEvent = _sendEvents.Components1[i];
-                _config.Data.EcsNetworkListener.SendComponent(sendEvent);
+                _config.Data.EcsNetworkListener.AddComponentsForSend(sendEvent);
                 sendEvent.ComponentBytes = null;
             }
 
             _sendEvents.RemoveAllEntities();
+            _config.Data.EcsNetworkListener.Send();
         }
 
         private void ReceiveComponents()

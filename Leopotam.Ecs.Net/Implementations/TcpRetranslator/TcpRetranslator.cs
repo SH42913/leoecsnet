@@ -47,7 +47,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             IsRunning = true;
             _listener.Start();
             Task.Run(() => ListenForNewClients());
-            Task.Run(() => SendAllToOtherRetranslators());
         }
 
         public void Stop()
@@ -89,20 +88,23 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             return disconnected;
         }
 
-        public void SendComponent(SendNetworkComponentEvent component)
+        public void AddComponentsForSend(SendNetworkComponentEvent component)
         {
-            if (component.ComponentFlags.HasFlag(EcsNetComponentFlags.IS_EVENT))
+            lock (_locker)
             {
-                _eventsForSend.Add(new Component
+                if (component.ComponentFlags.HasFlag(EcsNetComponentFlags.IS_EVENT))
                 {
-                    ComponentUid = component.ComponentTypeUid,
-                    Bytes = component.ComponentBytes,
-                    Flags = component.ComponentFlags
-                });
-            }
-            else
-            {
-                AddComponent(component);
+                    _eventsForSend.Add(new Component
+                    {
+                        ComponentUid = component.ComponentTypeUid,
+                        Bytes = component.ComponentBytes,
+                        Flags = component.ComponentFlags
+                    });
+                }
+                else
+                {
+                    AddComponent(component);
+                }
             }
         }
 
@@ -141,8 +143,12 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
 
         public IEnumerable<ReceivedNetworkComponentEvent> GetReceivedComponents()
         {
-            var received = _receivedComponents.ToArray();
-            _receivedComponents.Clear();
+            ReceivedNetworkComponentEvent[] received;
+            lock (_locker)
+            {
+                received = _receivedComponents.ToArray();
+                _receivedComponents.Clear();
+            }
             return received;
         }
 
@@ -215,10 +221,15 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             Task.Run(() => StartListenForNewComponents(retranslator));
         }
 
-        private void SendAllToOtherRetranslators()
+        public void Send()
         {
             if(_eventsForSend.Count <= 0 && _componentsForSend.Count <= 0) return;
 
+            Task.Run(() => SendEverything());
+        }
+
+        private void SendEverything()
+        {
             lock (_locker)
             {
                 foreach (Retranslator retranslator in _retranslators)
@@ -251,11 +262,8 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             {
                 while (IsRunning)
                 {
-                    lock (_locker)
-                    {
-                        ReceiveEvents(stream);
-                        ReceiveComponents(stream);
-                    }
+                    ReceiveEvents(stream);
+                    ReceiveComponents(stream);
                 }
             }
             finally
@@ -267,9 +275,12 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         private void ReceiveEvents(NetworkStream stream)
         {
             short eventCount = stream.ReadShort();
-            for (int i = 0; i < eventCount; i++)
+            lock (_locker)
             {
-                ReceiveEvent(stream);
+                for (int i = 0; i < eventCount; i++)
+                {
+                    ReceiveEvent(stream);
+                }
             }
         }
 
@@ -292,13 +303,16 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         private void ReceiveComponents(NetworkStream stream)
         {
             short entityCount = stream.ReadShort();
-            for (int entityIndex = 0; entityIndex < entityCount; entityIndex++)
+            lock (_locker)
             {
-                long networkEntity = stream.ReadLong();
-                short componentCount = stream.ReadShort();
-                for (int componentIndex = 0; componentIndex < componentCount; componentIndex++)
+                for (int entityIndex = 0; entityIndex < entityCount; entityIndex++)
                 {
-                    ReceiveComponent(stream, networkEntity);
+                    long networkEntity = stream.ReadLong();
+                    short componentCount = stream.ReadShort();
+                    for (int componentIndex = 0; componentIndex < componentCount; componentIndex++)
+                    {
+                        ReceiveComponent(stream, networkEntity);
+                    }
                 }
             }
         }
@@ -357,14 +371,14 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
 
         private void CloseRetranslator(Retranslator retranslator)
         {
+            retranslator.ReceiveClient.Close();
+            retranslator.SendClient.Close();
+            _retranslators.Remove(retranslator);
             _disconnectedClients.Add(new ClientInfo
             {
                 Address = retranslator.Address,
                 Port = retranslator.Port
             });
-            retranslator.ReceiveClient.Close();
-            retranslator.SendClient.Close();
-            _retranslators.Remove(retranslator);
         }
     }
 }
