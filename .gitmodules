@@ -6,3 +6,6 @@
 	path = leoEcs
 	url = https://github.com/Leopotam/ecs
 	branch = develop
+[submodule "Leopotam.Ecs"]
+	path = Leopotam.Ecs
+	url = https://github.com/Leopotam/ecs

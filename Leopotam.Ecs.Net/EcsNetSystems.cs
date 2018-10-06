@@ -227,7 +227,7 @@ namespace Leopotam.Ecs.Net
             if (componentWasRemoved && !localEntityExist)
             {
 #if DEBUG
-                throw new Exception($"Attempt to remove {typeof(TComponent).Name} for non exist local entity");
+                throw new Exception(string.Format("Attempt to remove {0} for non exist local entity", typeof(TComponent).Name));
 #endif
                 return;
             }
@@ -267,7 +267,7 @@ namespace Leopotam.Ecs.Net
 #if DEBUG
             if (!componentWasRemoved && componentToSend == null)
             {
-                throw new Exception($"{typeof(TComponent).Name} doesn't exist on this entity");
+                throw new Exception(string.Format("{0} doesn't exist on this entity", typeof(TComponent).Name));
             }
 #endif
             SendNetworkComponentEvent sendEvent;
@@ -284,7 +284,7 @@ namespace Leopotam.Ecs.Net
 #if DEBUG
                 if (!localEntityExist)
                 {
-                    throw new Exception($"You've tried to send removed {typeof(TComponent).Name} for not network entity");
+                    throw new Exception(string.Format("You've tried to send removed {0} for not network entity", typeof(TComponent).Name));
                 }
 #endif
 
@@ -343,7 +343,7 @@ namespace Leopotam.Ecs.Net
 #if DEBUG
             if (!componentWasRemoved && componentToSend == null)
             {
-                throw new Exception($"Component {nameof(TEvent)} doesn't exist on this entity");
+                throw new Exception(string.Format("Component {0} doesn't exist on this entity", nameof(TEvent)));
             }
 #endif
             SendNetworkComponentEvent sendEvent;

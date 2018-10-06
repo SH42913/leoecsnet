@@ -215,7 +215,6 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
                 }
                 catch (Exception)
                 {
-                    Console.WriteLine($"Retranslator {retranslator.Address}:{retranslator.Port} disconnected");
                     CloseRetranslator(retranslator);
                 }
             }
