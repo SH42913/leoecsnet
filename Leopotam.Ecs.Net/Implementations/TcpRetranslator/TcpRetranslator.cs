@@ -54,11 +54,17 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             if(!IsRunning) return;
             
             _listener.Stop();
+            foreach (Retranslator retranslator in _retranslators)
+            {
+                CloseRetranslator(retranslator);
+            }
             IsRunning = false;
         }
 
         public void Connect(string address, short port)
         {
+            if(GetRetranslatorIfExistOrNull(address, port) != null) return;
+            
             TcpClient sendClient = new TcpClient(address, port);
             NetworkStream sendStream = sendClient.GetStream();
             

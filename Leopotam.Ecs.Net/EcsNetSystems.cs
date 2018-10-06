@@ -144,6 +144,7 @@ namespace Leopotam.Ecs.Net
             _config.Data.EcsNetworkListener = null;
             _config.Data.LocalEntitiesToNetwork = null;
             _config.Data.NetworkEntitiesToLocal = null;
+            _config.Data.Serializator = null;
         }
     }
 
