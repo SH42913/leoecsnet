@@ -218,11 +218,11 @@ namespace Leopotam.Ecs.Net
     public sealed class NetworkComponentProcessSystem<TComponent> : BaseNetworkProcessSystem<TComponent>
         where TComponent : class, new()
     {
-        private Action<TComponent, TComponent> ComponentUpdateAction { get; }
+        private Action<TComponent, TComponent> NewToOldConverter { get; }
 
-        public NetworkComponentProcessSystem(Action<TComponent, TComponent> componentUpdateAction)
+        public NetworkComponentProcessSystem(Action<TComponent, TComponent> newToOldConverter)
         {
-            ComponentUpdateAction = componentUpdateAction;
+            NewToOldConverter = newToOldConverter;
         }
 
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
@@ -265,7 +265,7 @@ namespace Leopotam.Ecs.Net
             {
                 var newComponent =
                     NetworkConfig.Data.Serializator.GetComponentFromBytes<TComponent>(received.ComponentBytes);
-                ComponentUpdateAction(newComponent, oldComponent);
+                NewToOldConverter(newComponent, oldComponent);
             }
         }
 
@@ -331,11 +331,11 @@ namespace Leopotam.Ecs.Net
     public sealed class NetworkEventProcessSystem<TEvent> : BaseNetworkProcessSystem<TEvent>
         where TEvent : class, new()
     {
-        private Action<TEvent, TEvent> EventUpdateAction { get; }
+        private Action<TEvent, TEvent> NewToOldConverter { get; }
 
-        public NetworkEventProcessSystem(Action<TEvent, TEvent> eventUpdateAction)
+        public NetworkEventProcessSystem(Action<TEvent, TEvent> newToOldConverter)
         {
-            EventUpdateAction = eventUpdateAction;
+            NewToOldConverter = newToOldConverter;
         }
 
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
@@ -343,7 +343,7 @@ namespace Leopotam.Ecs.Net
             TEvent newEvent;
             var receivedEvent = NetworkConfig.Data.Serializator.GetComponentFromBytes<TEvent>(received.ComponentBytes);
             EcsWorld.CreateEntityWith(out newEvent);
-            EventUpdateAction(receivedEvent, newEvent);
+            NewToOldConverter(receivedEvent, newEvent);
         }
 
         protected override void PrepareComponentToNetwork(PrepareComponentToSendEvent<TEvent> prepareComponent)

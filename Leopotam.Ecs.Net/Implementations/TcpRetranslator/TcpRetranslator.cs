@@ -54,9 +54,12 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             if(!IsRunning) return;
             
             _listener.Stop();
-            foreach (Retranslator retranslator in _retranslators)
+            lock (_locker)
             {
-                CloseRetranslator(retranslator);
+                foreach (Retranslator retranslator in _retranslators)
+                {
+                    CloseRetranslator(retranslator);
+                }
             }
             IsRunning = false;
         }
@@ -71,13 +74,16 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             sendStream.WriteByte((byte) _config.LocalAddress.Length);
             sendStream.WriteAsciiString(_config.LocalAddress);
             sendStream.WriteShort(_config.LocalPort);
-            
-            _retranslators.Add(new Retranslator
+
+            lock (_locker)
             {
-                Address = address,
-                Port = port,
-                SendClient = sendClient
-            });
+                _retranslators.Add(new Retranslator
+                {
+                    Address = address,
+                    Port = port,
+                    SendClient = sendClient
+                });
+            }
         }
 
         public IEnumerable<ClientInfo> GetConnectedClients()
@@ -211,8 +217,11 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
                 ReceiveClient = receiveClient,
                 SendClient = sendClient
             };
-            _retranslators.Add(newRetranslator);
-            FinalizeConnection(newRetranslator);
+            lock (_locker)
+            {
+                _retranslators.Add(newRetranslator);
+                FinalizeConnection(newRetranslator);
+            }
         }
 
         private Retranslator GetRetranslatorIfExistOrNull(string address, int port)
@@ -387,12 +396,15 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         {
             retranslator.ReceiveClient.Close();
             retranslator.SendClient.Close();
-            _retranslators.Remove(retranslator);
-            _disconnectedClients.Add(new ClientInfo
+            lock (_locker)
             {
-                Address = retranslator.Address,
-                Port = retranslator.Port
-            });
+                _retranslators.Remove(retranslator);
+                _disconnectedClients.Add(new ClientInfo
+                {
+                    Address = retranslator.Address,
+                    Port = retranslator.Port
+                });
+            }
         }
     }
 }
