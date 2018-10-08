@@ -20,10 +20,15 @@ namespace Leopotam.Ecs.Net
         private EcsFilter<ClientConnectedEvent> _connectedClients = null;
         private EcsFilter<ClientDisconnectedEvent> _disconnectedClients = null;
 
+#if DEBUG
+        private EcsFilter<PrepareToSendCountEvent> _prepareEvents = null;
+#endif
+
         public void Initialize()
         {
             _config.Data.LocalEntitiesToNetwork = new Dictionary<int, long>();
             _config.Data.NetworkEntitiesToLocal = new Dictionary<long, int>();
+            _config.Data.NetworkUidToType = new Dictionary<short, Type>();
         }
 
         public void Run()
@@ -103,14 +108,26 @@ namespace Leopotam.Ecs.Net
 
         private void SendComponents()
         {
+#if DEBUG
+            int prepareCount = _prepareEvents.EntitiesCount;
+            int sendCount = _sendEvents.EntitiesCount;
+            if (prepareCount != sendCount)
+            {
+                throw new Exception(string.Format("You have {0} PrepareEvents and {1} SendEvents." +
+                                                  "Did you register all NetworkComponentProcessSystems?", prepareCount, sendCount));
+            }
+            _prepareEvents.RemoveAllEntities();
+#endif
+            
             for (int i = 0; i < _sendEvents.EntitiesCount; i++)
             {
                 var sendEvent = _sendEvents.Components1[i];
-                _config.Data.EcsNetworkListener.SendComponent(sendEvent);
+                _config.Data.EcsNetworkListener.AddComponentsForSend(sendEvent);
                 sendEvent.ComponentBytes = null;
             }
 
             _sendEvents.RemoveAllEntities();
+            _config.Data.EcsNetworkListener.Send();
         }
 
         private void ReceiveComponents()
@@ -136,6 +153,15 @@ namespace Leopotam.Ecs.Net
 
         public void Destroy()
         {
+            if (_config.Data.EcsNetworkListener.IsRunning)
+            {
+                _config.Data.EcsNetworkListener.Stop();
+            }
+            _config.Data.EcsNetworkListener = null;
+            _config.Data.LocalEntitiesToNetwork = null;
+            _config.Data.NetworkEntitiesToLocal = null;
+            _config.Data.NetworkUidToType = null;
+            _config.Data.Serializator = null;
         }
     }
 
@@ -151,8 +177,12 @@ namespace Leopotam.Ecs.Net
         protected EcsFilter<ReceivedNetworkComponentEvent> ReceivedComponents = null;
         protected EcsFilter<PrepareComponentToSendEvent<T>> ComponentsToPrepare = null;
 
+        private bool _uidIsInited = false;
+
         public void Initialize()
         {
+            if(_uidIsInited) return;
+            
             var attr = Attribute
                 .GetCustomAttribute(typeof(T), typeof(EcsNetComponentUidAttribute)) as EcsNetComponentUidAttribute;
 #if DEBUG
@@ -160,8 +190,14 @@ namespace Leopotam.Ecs.Net
             {
                 throw new Exception(typeof(T).Name + " doesn't has " + nameof(EcsNetComponentUidAttribute));
             }
+            else if (NetworkConfig.Data.NetworkUidToType.ContainsKey(attr.Uid))
+            {
+                throw new Exception(string.Format("UID {0} already registered", attr.Uid));
+            }
 #endif
             ComponentUid = attr.Uid;
+            NetworkConfig.Data.NetworkUidToType.Add(attr.Uid, typeof(T));
+            _uidIsInited = true;
         }
 
         public void Run()
@@ -202,6 +238,7 @@ namespace Leopotam.Ecs.Net
 
         public void Destroy()
         {
+            NetworkConfig.Data.NetworkUidToType.Remove(ComponentUid);
         }
     }
 
@@ -209,11 +246,11 @@ namespace Leopotam.Ecs.Net
     public sealed class NetworkComponentProcessSystem<TComponent> : BaseNetworkProcessSystem<TComponent>
         where TComponent : class, new()
     {
-        private Action<TComponent, TComponent> ComponentUpdateAction { get; }
+        private Action<TComponent, TComponent> NewToOldConverter { get; }
 
-        public NetworkComponentProcessSystem(Action<TComponent, TComponent> componentUpdateAction)
+        public NetworkComponentProcessSystem(Action<TComponent, TComponent> newToOldConverter)
         {
-            ComponentUpdateAction = componentUpdateAction;
+            NewToOldConverter = newToOldConverter;
         }
 
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
@@ -235,7 +272,8 @@ namespace Leopotam.Ecs.Net
             if (localEntityExist)
             {
                 localEntity = NetworkConfig.Data.NetworkEntitiesToLocal[received.NetworkEntityUid];
-                oldComponent = EcsWorld.EnsureComponent<TComponent>(localEntity, out _);
+                bool isNew;
+                oldComponent = EcsWorld.EnsureComponent<TComponent>(localEntity, out isNew);
             }
             else
             {
@@ -255,7 +293,7 @@ namespace Leopotam.Ecs.Net
             {
                 var newComponent =
                     NetworkConfig.Data.Serializator.GetComponentFromBytes<TComponent>(received.ComponentBytes);
-                ComponentUpdateAction(newComponent, oldComponent);
+                NewToOldConverter(newComponent, oldComponent);
             }
         }
 
@@ -321,11 +359,11 @@ namespace Leopotam.Ecs.Net
     public sealed class NetworkEventProcessSystem<TEvent> : BaseNetworkProcessSystem<TEvent>
         where TEvent : class, new()
     {
-        private Action<TEvent, TEvent> EventUpdateAction { get; }
+        private Action<TEvent, TEvent> NewToOldConverter { get; }
 
-        public NetworkEventProcessSystem(Action<TEvent, TEvent> eventUpdateAction)
+        public NetworkEventProcessSystem(Action<TEvent, TEvent> newToOldConverter)
         {
-            EventUpdateAction = eventUpdateAction;
+            NewToOldConverter = newToOldConverter;
         }
 
         protected override void ProcessReceivedComponent(ReceivedNetworkComponentEvent received)
@@ -333,7 +371,7 @@ namespace Leopotam.Ecs.Net
             TEvent newEvent;
             var receivedEvent = NetworkConfig.Data.Serializator.GetComponentFromBytes<TEvent>(received.ComponentBytes);
             EcsWorld.CreateEntityWith(out newEvent);
-            EventUpdateAction(receivedEvent, newEvent);
+            NewToOldConverter(receivedEvent, newEvent);
         }
 
         protected override void PrepareComponentToNetwork(PrepareComponentToSendEvent<TEvent> prepareComponent)

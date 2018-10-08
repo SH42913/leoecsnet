@@ -9,6 +9,10 @@
             ecsWorld.CreateEntityWith(out prepare);
             prepare.LocalEntityUid = entity;
             prepare.ComponentFlags = 0;
+
+#if DEBUG
+            ecsWorld.CreateEntityWith<PrepareToSendCountEvent>();
+#endif
         }
         
         public static void SendRemovedComponentToNetwork<TComponent>(this EcsWorld ecsWorld, int entity) 
@@ -18,6 +22,10 @@
             ecsWorld.CreateEntityWith(out prepare);
             prepare.LocalEntityUid = entity;
             prepare.ComponentFlags = EcsNetComponentFlags.WAS_REMOVED;
+
+#if DEBUG
+            ecsWorld.CreateEntityWith<PrepareToSendCountEvent>();
+#endif
         }
         
         public static TEvent SendEventToNetwork<TEvent>(this EcsWorld ecsWorld) 
@@ -29,6 +37,10 @@
             ecsWorld.CreateEntityWith(out prepare);
             prepare.LocalEntityUid = entity;
             prepare.ComponentFlags = EcsNetComponentFlags.IS_EVENT;
+
+#if DEBUG
+            ecsWorld.CreateEntityWith<PrepareToSendCountEvent>();
+#endif
 
             return newEvent;
         }

@@ -20,7 +20,8 @@ namespace Leopotam.Ecs.Net
         IEnumerable<ClientInfo> GetConnectedClients();
         IEnumerable<ClientInfo> GetDisconnectedClients();
         
-        void SendComponent(SendNetworkComponentEvent component);
+        void AddComponentsForSend(SendNetworkComponentEvent component);
+        void Send();
         IEnumerable<ReceivedNetworkComponentEvent> GetReceivedComponents();
     }
 }

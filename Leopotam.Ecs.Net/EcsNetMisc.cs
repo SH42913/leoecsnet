@@ -31,6 +31,7 @@ namespace Leopotam.Ecs.Net
     
     public class EcsNetworkConfig
     {
+        [EcsIgnoreNullCheck]
         public readonly Random Random = new Random();
         
         public string LocalAddress;
@@ -38,6 +39,7 @@ namespace Leopotam.Ecs.Net
         
         public Dictionary<long, int> NetworkEntitiesToLocal;
         public Dictionary<int, long> LocalEntitiesToNetwork;
+        public Dictionary<short, Type> NetworkUidToType;
 
         public IEcsNetworkListener EcsNetworkListener;
         public ISerializator Serializator;
@@ -77,21 +79,33 @@ namespace Leopotam.Ecs.Net
         public static string ReadAsciiString(this Stream stream, int symbolCount)
         {
             byte[] asciiBytes = new byte[symbolCount];
-            stream.Read(asciiBytes, 0, symbolCount);
+            int count = stream.Read(asciiBytes, 0, symbolCount);
+            if (count == 0)
+            {
+                throw new Exception("Disconnected");
+            }
             return Encoding.ASCII.GetString(asciiBytes);
         }
         
         public static short ReadShort(this Stream stream)
         {
             byte[] shortBytes = new byte[2];
-            stream.Read(shortBytes, 0, 2);
+            int count = stream.Read(shortBytes, 0, 2);
+            if (count == 0)
+            {
+                throw new Exception("Disconnected");
+            }
             return BitConverter.ToInt16(shortBytes, 0);
         }
 
         public static long ReadLong(this Stream stream)
         {
             byte[] longBytes = new byte[8];
-            stream.Read(longBytes, 0, 8);
+            int count = stream.Read(longBytes, 0, 8);
+            if (count == 0)
+            {
+                throw new Exception("Disconnected");
+            }
             return BitConverter.ToInt64(longBytes, 0);
         }
     }
