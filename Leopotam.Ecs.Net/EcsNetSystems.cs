@@ -115,7 +115,8 @@ namespace Leopotam.Ecs.Net
             {
                 throw new Exception(string.Format("You have {0} PrepareEvents and {1} SendEvents." +
                                                   "Did you register all NetworkComponentProcessSystems?", prepareCount, sendCount));
-            }            
+            }
+            _prepareEvents.RemoveAllEntities();
 #endif
             
             for (int i = 0; i < _sendEvents.EntitiesCount; i++)
