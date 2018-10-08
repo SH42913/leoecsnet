@@ -175,8 +175,12 @@ namespace Leopotam.Ecs.Net
         protected EcsFilter<ReceivedNetworkComponentEvent> ReceivedComponents = null;
         protected EcsFilter<PrepareComponentToSendEvent<T>> ComponentsToPrepare = null;
 
+        private bool _uidIsInited = false;
+
         public void Initialize()
         {
+            if(_uidIsInited) return;
+            
             var attr = Attribute
                 .GetCustomAttribute(typeof(T), typeof(EcsNetComponentUidAttribute)) as EcsNetComponentUidAttribute;
 #if DEBUG
@@ -191,6 +195,7 @@ namespace Leopotam.Ecs.Net
 #endif
             ComponentUid = attr.Uid;
             NetworkConfig.Data.NetworkUidToType.Add(attr.Uid, typeof(T));
+            _uidIsInited = true;
         }
 
         public void Run()
