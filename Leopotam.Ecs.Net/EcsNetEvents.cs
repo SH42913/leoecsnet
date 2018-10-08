@@ -17,6 +17,14 @@
     {
         
     }
+
+#if DEBUG
+    [EcsIgnoreInFilter]
+    public class PrepareToSendCountEvent
+    {
+        
+    }
+#endif
     
     public class PrepareComponentToSendEvent<TComponent> where TComponent : class, new()
     {

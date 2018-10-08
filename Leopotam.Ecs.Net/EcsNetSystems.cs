@@ -20,6 +20,10 @@ namespace Leopotam.Ecs.Net
         private EcsFilter<ClientConnectedEvent> _connectedClients = null;
         private EcsFilter<ClientDisconnectedEvent> _disconnectedClients = null;
 
+#if DEBUG
+        private EcsFilter<PrepareToSendCountEvent> _prepareEvents = null;
+#endif
+
         public void Initialize()
         {
             _config.Data.LocalEntitiesToNetwork = new Dictionary<int, long>();
@@ -103,6 +107,17 @@ namespace Leopotam.Ecs.Net
 
         private void SendComponents()
         {
+#if DEBUG
+            int prepareCount = _prepareEvents.EntitiesCount;
+            int sendCount = _sendEvents.EntitiesCount;
+            if (prepareCount != sendCount)
+            {
+                throw new Exception(string.Format("You have {0} PrepareEvents and {1} SendEvents." +
+                                                  "Did you register all NetworkComponentProcessSystems?", prepareCount, sendCount));
+            }
+            
+#endif
+            
             for (int i = 0; i < _sendEvents.EntitiesCount; i++)
             {
                 var sendEvent = _sendEvents.Components1[i];
