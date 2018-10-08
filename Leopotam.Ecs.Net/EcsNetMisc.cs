@@ -39,6 +39,7 @@ namespace Leopotam.Ecs.Net
         
         public Dictionary<long, int> NetworkEntitiesToLocal;
         public Dictionary<int, long> LocalEntitiesToNetwork;
+        public Dictionary<short, Type> NetworkUidToType;
 
         public IEcsNetworkListener EcsNetworkListener;
         public ISerializator Serializator;

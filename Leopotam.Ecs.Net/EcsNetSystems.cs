@@ -28,6 +28,7 @@ namespace Leopotam.Ecs.Net
         {
             _config.Data.LocalEntitiesToNetwork = new Dictionary<int, long>();
             _config.Data.NetworkEntitiesToLocal = new Dictionary<long, int>();
+            _config.Data.NetworkUidToType = new Dictionary<short, Type>();
         }
 
         public void Run()
@@ -114,8 +115,7 @@ namespace Leopotam.Ecs.Net
             {
                 throw new Exception(string.Format("You have {0} PrepareEvents and {1} SendEvents." +
                                                   "Did you register all NetworkComponentProcessSystems?", prepareCount, sendCount));
-            }
-            
+            }            
 #endif
             
             for (int i = 0; i < _sendEvents.EntitiesCount; i++)
@@ -184,8 +184,13 @@ namespace Leopotam.Ecs.Net
             {
                 throw new Exception(typeof(T).Name + " doesn't has " + nameof(EcsNetComponentUidAttribute));
             }
+            else if (NetworkConfig.Data.NetworkUidToType.ContainsKey(attr.Uid))
+            {
+                throw new Exception(string.Format("UID {0} already registered", attr.Uid));
+            }
 #endif
             ComponentUid = attr.Uid;
+            NetworkConfig.Data.NetworkUidToType.Add(attr.Uid, typeof(T));
         }
 
         public void Run()
@@ -226,6 +231,7 @@ namespace Leopotam.Ecs.Net
 
         public void Destroy()
         {
+            NetworkConfig.Data.NetworkUidToType.Remove(ComponentUid);
         }
     }
 
