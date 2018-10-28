@@ -62,4 +62,9 @@
     {
         public int LocalEntity;
     }
+
+    public class RemoveNetworkEntityEvent
+    {
+        public int LocalEntity;
+    }
 }

@@ -45,11 +45,18 @@
             return newEvent;
         }
 
+        public static void RemoveNetworkEntity(this EcsWorld ecsWorld, int localEntity)
+        {
+            ecsWorld.CreateEntityWith<RemoveNetworkEntityEvent>().LocalEntity = localEntity;
+        }
+
         public static void RemoveAllEntities(this EcsFilter filter)
         {
-            var world = filter.GetWorld();
-            for (var i = 0; i < filter.EntitiesCount; i++) {
-                world.RemoveEntity (filter.Entities[i]);
+            EcsWorld ecsWorld = filter.GetWorld();
+            
+            foreach(int i in filter) 
+            {
+                ecsWorld.RemoveEntity (filter.Entities[i]);
             }
         }
     }

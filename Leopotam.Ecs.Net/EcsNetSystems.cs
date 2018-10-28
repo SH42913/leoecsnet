@@ -14,6 +14,7 @@ namespace Leopotam.Ecs.Net
 
         private EcsFilter<SendNetworkComponentEvent> _sendEvents = null;
         private EcsFilter<ConnectToEvent> _connectEvents = null;
+        private EcsFilter<RemoveNetworkEntityEvent> _removeEntityEvents = null;
         
         private EcsFilter<NewEntityReceivedEvent> _newEntities = null;
         private EcsFilter<ReceivedNetworkComponentEvent> _receivedComponents = null;
@@ -38,6 +39,7 @@ namespace Leopotam.Ecs.Net
             ReceiveConnects();
             SendComponents();
             ReceiveComponents();
+            RemoveNetworkEntities();
         }
 
         private void StartStopListener()
@@ -163,6 +165,20 @@ namespace Leopotam.Ecs.Net
                 receivedNetworkComponentEvent.ComponentTypeUid = receivedComponent.ComponentTypeUid;
                 receivedNetworkComponentEvent.ComponentBytes = receivedComponent.ComponentBytes;
             }
+        }
+
+        private void RemoveNetworkEntities()
+        {
+            foreach (int i in _removeEntityEvents)
+            {
+                int localEntity = _removeEntityEvents.Components1[i].LocalEntity;
+                if(!_networkConfig.LocalEntitiesToNetwork.ContainsKey(localEntity)) continue;
+
+                long networkEntity = _networkConfig.LocalEntitiesToNetwork[localEntity];
+                _networkConfig.NetworkEntitiesToLocal.Remove(networkEntity);
+                _networkConfig.LocalEntitiesToNetwork.Remove(localEntity);
+            }
+            _removeEntityEvents.RemoveAllEntities();
         }
 
         public void Destroy()
