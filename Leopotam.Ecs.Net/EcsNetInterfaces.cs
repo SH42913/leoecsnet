@@ -22,6 +22,7 @@ namespace Leopotam.Ecs.Net
         
         void AddComponentsForSend(SendNetworkComponentEvent component);
         void Send();
+        
         IEnumerable<ReceivedNetworkComponentEvent> GetReceivedComponents();
     }
 }
