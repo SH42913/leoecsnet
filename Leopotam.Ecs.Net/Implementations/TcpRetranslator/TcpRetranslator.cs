@@ -40,7 +40,7 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         private EcsNetworkConfig _config;
         private TcpListener _tcpListener;
 
-        private Thread newClientListenerThread;
+        private Thread _newClientListenerThread;
 
         public void Start(EcsNetworkConfig config)
         {
@@ -50,10 +50,11 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             IsRunning = true;
             _tcpListener.Start();
             
-            newClientListenerThread = new Thread(ListenForNewClients)
+            _newClientListenerThread = new Thread(ListenForNewClients)
             {
                 IsBackground = true
             };
+            _newClientListenerThread.Start();
         }
 
         public void Stop()
