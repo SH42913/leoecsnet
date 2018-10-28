@@ -364,7 +364,12 @@ namespace Leopotam.Ecs.Net
                 }
                 else
                 {
-                    networkEntity = NetworkConfig.Random.NextInt64();
+                    do
+                    {
+                        networkEntity = NetworkConfig.Random.NextInt64();
+                    } 
+                    while (NetworkConfig.NetworkEntitiesToLocal.ContainsKey(networkEntity));
+                    
                     AddNetworkToLocalEntity(networkEntity, localEntity);
                     sendEvent.NetworkEntityUid = networkEntity;
                 }
