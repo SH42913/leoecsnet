@@ -396,8 +396,11 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         {
             retranslator.ReceiveClient.Close();
             retranslator.SendClient.Close();
+            
             lock (_locker)
             {
+                if(!_retranslators.Contains(retranslator)) return;
+                
                 _retranslators.Remove(retranslator);
                 _disconnectedClients.Add(new ClientInfo
                 {
