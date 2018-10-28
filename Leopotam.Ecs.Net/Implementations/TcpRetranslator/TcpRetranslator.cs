@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
@@ -37,23 +38,29 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
         private readonly List<ClientInfo> _disconnectedClients = new List<ClientInfo>();
 
         private EcsNetworkConfig _config;
-        private TcpListener _listener;
+        private TcpListener _tcpListener;
+
+        private Thread newClientListenerThread;
 
         public void Start(EcsNetworkConfig config)
         {
             _config = config;
-            _listener = new TcpListener(IPAddress.Parse(config.LocalAddress), config.LocalPort);
+            _tcpListener = new TcpListener(IPAddress.Parse(config.LocalAddress), config.LocalPort);
 
             IsRunning = true;
-            _listener.Start();
-            Task.Run(() => ListenForNewClients());
+            _tcpListener.Start();
+            
+            newClientListenerThread = new Thread(ListenForNewClients)
+            {
+                IsBackground = true
+            };
         }
 
         public void Stop()
         {
             if(!IsRunning) return;
             
-            _listener.Stop();
+            _tcpListener.Stop();
             lock (_locker)
             {
                 foreach (Retranslator retranslator in _retranslators)
@@ -178,7 +185,7 @@ namespace Leopotam.Ecs.Net.Implementations.TcpRetranslator
             {
                 while (IsRunning)
                 {
-                    TcpClient newClient = _listener.AcceptTcpClient();
+                    TcpClient newClient = _tcpListener.AcceptTcpClient();
                     AcceptNewClient(newClient);
                 }
             }
